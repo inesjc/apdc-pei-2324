@@ -1,8 +1,11 @@
 package pt.unl.fct.di.apdc.firstwebapp.resources;
 
+import java.io.IOException;
+import java.net.URI;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.ws.rs.GET;
@@ -28,9 +31,14 @@ public class ComputationResource {
 	@GET
 	@Path("/hello")
 	@Produces(MediaType.TEXT_PLAIN)
-	public Response hello() {
-		LOG.fine("Saying hello!!");
-		return Response.ok().entity("Hello apdc-pei-2324 person! I hope you are having a fine day.").build();
+	public Response hello() throws IOException {
+		try {
+			throw new IOException("UPS");
+		}
+		catch (Exception e) {
+			LOG.log(Level.SEVERE, "Exception on Method /hello", e);
+			return Response.temporaryRedirect(URI.create("/error/500.html")).build();
+		}
 	}
 	
 	@GET
