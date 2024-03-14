@@ -46,5 +46,15 @@
 		<servlet-name>MainServices</servlet-name>
 		<url-pattern>/rest/*</url-pattern>
 	</servlet-mapping>
+	
+	<security-constraint>
+		<web-resource-collection>
+			<web-resource-name>Restricted Area</web-resource-name>
+			<url-pattern>/secret/*</url-pattern>
+		</web-resource-collection>
+		<auth-constraint>
+			<role-name>admin</role-name>
+		</auth-constraint>
+	</security-constraint>
 
 </web-app>
