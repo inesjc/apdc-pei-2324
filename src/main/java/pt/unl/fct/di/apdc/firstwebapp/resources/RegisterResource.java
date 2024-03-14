@@ -44,15 +44,9 @@ public class RegisterResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response doRegister(LoginData data) {
 		LOG.fine("Attemp to register user: " + data.username);
-		/*
-		if(data.username.equals("jleitao") && data.password.equals("password")) {
-			AuthToken at = new AuthToken(data.username);
-			return Response.ok(g.toJson(at)).build();
-		}
-		return Response.status(Status.FORBIDDEN).entity("Incorrect username or password.").build();
-		*/
 		Key userKey = datastore.newKeyFactory().setKind("username").newKey(data.username);
 		Entity person = Entity.newBuilder(userKey).set("password", data.password).build();
+		person.newBuilder(userKey).set("timeOfCreation", System.currentTimeMillis());
 		try {
 			datastore.add(person);
 			AuthToken at = new AuthToken(data.username);
