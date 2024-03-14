@@ -23,6 +23,17 @@
 	<servlet>
 		<servlet-name>MainServices</servlet-name>
 		<servlet-class>org.glassfish.jersey.servlet.ServletContainer</servlet-class>
+		
+		<init-param>
+			<param-name>jersey.config.server.provider.classnames</param-name>
+			<param-value>pt.unl.fct.di.apdc.firstwebapp.filters.AdditionalResponseHeadersFilter</param-value>
+		</init-param>
+		
+		<init-param>
+			<param-name>jersey.config.servlet.filter.contextPath</param-name>
+			<param-value>/rest/*</param-value>
+		</init-param>
+		
 		<init-param>
 			<param-name>jersey.config.server.provider.packages</param-name>
 			<param-value>pt.unl.fct.di.apdc.firstwebapp.resources</param-value>
@@ -38,7 +49,7 @@
 
 		<init-param>
 			<param-name>jersey.config.server.tracing.type</param-name>
-			<param-value>ALL</param-value> <!-- This is a debug utility that should be disabled when code goes to production -->
+			<param-value>OFF</param-value> <!-- This is a debug utility that should be disabled when code goes to production -->
 		</init-param>
 		<load-on-startup>1</load-on-startup>
 	</servlet>
