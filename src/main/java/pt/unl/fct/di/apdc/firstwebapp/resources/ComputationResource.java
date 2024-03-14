@@ -48,4 +48,20 @@ public class ComputationResource {
 		LOG.fine("Replying to date request.");
 		return Response.ok().entity(g.toJson(fmt.format(new Date()))).build();
 	}
+	
+	
+	@GET
+	@Path("/compute")
+	public Response executeComputeTask() {
+		LOG.fine("Starting to execute computation tasks");
+		try {
+			Thread.sleep(60*1000*10);
+		}
+		catch(Exception e) {
+			LOG.logp(Level.SEVERE, this.getClass().getCanonicalName(), "executeComputeTask", "An exception has ocurred", e);
+			return Response.serverError().build();
+		}
+		return Response.ok().build();
+	}
+	
 }
