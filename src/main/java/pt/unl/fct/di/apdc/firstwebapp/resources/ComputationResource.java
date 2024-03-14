@@ -4,17 +4,22 @@ import java.io.IOException;
 import java.net.URI;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.*;
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.google.cloud.tasks.v2.*;
 import com.google.gson.Gson;
+import com.google.protobuf.Timestamp;
+
 
 
 @Path("/utils")
@@ -49,18 +54,35 @@ public class ComputationResource {
 		return Response.ok().entity(g.toJson(fmt.format(new Date()))).build();
 	}
 	
-	
 	@GET
+	@Path("/compute")
+	public Response triggerExecuteComputeTask() throws IOException{
+		String projectId = "quixotic-sunset-416023";
+		String queueName = "Default";
+		String location = "europe-west6";
+		
+		LOG.log(Level.INFO, projectId + " :: " + queueName + " :: " + location);
+		
+		try (CloudTasksClient client = CloudTasksClient.create()){
+			String queuePath = QueueName.of(projectId, location, queueName).toString();
+			Task.Builder taskBuilder = Task.newBuilder().setAppEngineHttpRequest(AppEngineHttpRequest.newBuilder().setRelativeUri("/rest/utils/compute").setHttpMethod(HttpMethod.POST).build());
+			taskBuilder.setScheduleTime(Timestamp.newBuilder().setSeconds(Instant.now(Clock.systemUTC()).getEpochSecond()));
+			client.createTask(queuePath, taskBuilder.build());
+		}
+		return Response.ok().build();
+	}
+	
+	@POST
 	@Path("/compute")
 	public Response executeComputeTask() {
 		LOG.fine("Starting to execute computation tasks");
 		try {
-			Thread.sleep(60*1000*10);
+			Thread.sleep(60*1000*10); // 10 min...
 		}
 		catch(Exception e) {
 			LOG.logp(Level.SEVERE, this.getClass().getCanonicalName(), "executeComputeTask", "An exception has ocurred", e);
 			return Response.serverError().build();
-		}
+		}	// Simulates 60s execution
 		return Response.ok().build();
 	}
 	
