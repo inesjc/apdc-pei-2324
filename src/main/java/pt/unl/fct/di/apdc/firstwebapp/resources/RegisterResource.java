@@ -51,8 +51,8 @@ public class RegisterResource {
 		}
 		return Response.status(Status.FORBIDDEN).entity("Incorrect username or password.").build();
 		*/
-		Key userKey = datastore.newKeyFactory().setKind("Person").newKey(data.username);
-		Entity person = Entity.newBuilder(userKey).set("email", "cd@fct.unl.pt").build();
+		Key userKey = datastore.newKeyFactory().setKind("username").newKey(data.username);
+		Entity person = Entity.newBuilder(userKey).set("password", data.password).build();
 		try {
 			datastore.add(person);
 			AuthToken at = new AuthToken(data.username);
