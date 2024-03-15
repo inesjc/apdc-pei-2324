@@ -21,6 +21,7 @@ import com.google.gson.Gson;
 
 import pt.unl.fct.di.apdc.firstwebapp.util.AuthToken;
 import pt.unl.fct.di.apdc.firstwebapp.util.LoginData;
+import pt.unl.fct.di.apdc.firstwebapp.util.LoginDataV2;
 
 
 @Path("/register")
@@ -48,7 +49,43 @@ public class RegisterResource {
 		Entity person = Entity.newBuilder(userKey).set("password", data.password).set("timeOfCreation", System.currentTimeMillis()).build();
 		try {
 			datastore.add(person);
-			AuthToken at = new AuthToken(data.username);
+		}
+		catch (DatastoreException e) {
+			if ("ALREADY_EXISTS".equals(e.getReason())) {
+			     // entity.getKey() already exists
+				return Response.status(Status.FORBIDDEN).entity("Username already in use.").build();
+			}
+		}
+		AuthToken at = new AuthToken(data.username);
+		return Response.ok(g.toJson(at)).build();
+	}
+	
+	@POST
+	@Path("/v2")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response doRegisterV2(LoginDataV2 data) {
+		LOG.fine("Attemp to register user: " + data.username);
+		// TODO: This is not for the server, it stays here at the moment
+		// TODO: Verificar se todos os valores fazem sentido
+		// TODO: calcular IP e localizacao
+		// Verificar se estao preenchidos
+		if(data.username == null || data.password == null || data.confirmation == null  || data.email == null  || data.name == null) {
+			return Response.status(Status.BAD_REQUEST).entity("At least one field is null.").build();
+		}
+		if(data.username.isEmpty() || data.password.isEmpty() || data.confirmation.isEmpty()  || data.email.isEmpty()  || data.name.isEmpty()) {
+			return Response.status(Status.BAD_REQUEST).entity("At least one field is empty.").build();
+		}
+		if(!data.password.equals(data.confirmation)) {
+			return Response.status(Status.BAD_REQUEST).entity("Passwords don't match.").build();
+		}
+		Key userKey = datastore.newKeyFactory().setKind("username").newKey(data.username);
+		Entity person = Entity.newBuilder(userKey).set("password", data.password)
+												  .set("confirmation", data.confirmation)
+												  .set("email", data.email)
+												  .set("name", data.name)
+												  .build();
+		try {
+			datastore.add(person);
 		}
 		catch (DatastoreException e) {
 			if ("ALREADY_EXISTS".equals(e.getReason())) {
