@@ -45,8 +45,7 @@ public class RegisterResource {
 	public Response doRegister(LoginData data) {
 		LOG.fine("Attemp to register user: " + data.username);
 		Key userKey = datastore.newKeyFactory().setKind("username").newKey(data.username);
-		Entity person = Entity.newBuilder(userKey).set("password", data.password).build();
-		person.newBuilder(userKey).set("timeOfCreation", System.currentTimeMillis());
+		Entity person = Entity.newBuilder(userKey).set("password", data.password).set("timeOfCreation", System.currentTimeMillis()).build();
 		try {
 			datastore.add(person);
 			AuthToken at = new AuthToken(data.username);
