@@ -12,6 +12,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.google.cloud.datastore.Datastore;
+import com.google.cloud.datastore.DatastoreOptions;
+import com.google.cloud.datastore.Entity;
+import com.google.cloud.datastore.Key;
 import com.google.gson.Gson;
 
 import pt.unl.fct.di.apdc.firstwebapp.util.AuthToken;
@@ -28,6 +32,8 @@ public class LoginResource {
 	
 	private final Gson g = new Gson();
 	
+	private final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+	
 	public LoginResource() {}	// Nothing to be done here
 	
 	
@@ -41,6 +47,31 @@ public class LoginResource {
 			return Response.ok(g.toJson(at)).build();
 		}
 		return Response.status(Status.FORBIDDEN).entity("Incorrect username or password.").build();
+	}
+	
+	@POST
+	@Path("/v1")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response doLoginV1(LoginData data) {
+		LOG.fine("Attemp to login user: " + data.username);
+		
+		if(data.username == null || data.password == null) {
+			return Response.status(Status.BAD_REQUEST).entity("At least one field is null.").build();
+		}
+		if(data.username.isEmpty() || data.password.isEmpty()) {
+			return Response.status(Status.BAD_REQUEST).entity("At least one field is empty.").build();
+		}
+		
+		Key userKey = datastore.newKeyFactory().setKind("username").newKey(data.username);
+		Entity e = datastore.get(userKey);
+		if(e != null) {
+			if((e.getString("password")).equals(data.password)) {
+				AuthToken at = new AuthToken(data.username);
+				return Response.ok(g.toJson(at)).build();
+			}
+			return Response.status(Status.NOT_FOUND).entity("Wrong password.").build();
+		}
+		return Response.status(Status.NOT_FOUND).entity("Username does not exist, please register.").build();
 	}
 	
 	
