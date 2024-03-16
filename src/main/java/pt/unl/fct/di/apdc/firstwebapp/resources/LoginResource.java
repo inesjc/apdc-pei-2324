@@ -62,7 +62,7 @@ public class LoginResource {
 			return Response.status(Status.BAD_REQUEST).entity("At least one field is empty.").build();
 		}
 		
-		Key userKey = datastore.newKeyFactory().setKind("username").newKey(data.username);
+		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
 		Entity e = datastore.get(userKey);
 		if(e != null) {
 			if((e.getString("password")).equals(data.password)) {
