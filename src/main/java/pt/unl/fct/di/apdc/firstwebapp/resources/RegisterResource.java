@@ -63,36 +63,12 @@ public class RegisterResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response doRegisterV2(LoginDataV2 data) {
 		LOG.fine("Attemp to register user: " + data.username);
-		
-		if (areParamsNull(data)) {
-			return Response.status(Status.BAD_REQUEST).entity("At least one field is null.").build();
-		}
-		if (areParamsEmpty(data)) {
-			return Response.status(Status.BAD_REQUEST).entity("At least one field is empty.").build();
-		}
-		
-		String status = null;
-		
-		status = Utils.isEmailValid(data.email);
-		if (!status.equals(Utils.SUCCESS)) {
-			return Response.status(Status.BAD_REQUEST).entity(status).build();
-		}
-		status = Utils.isNameValid(data.name);
-		if (!status.equals(Utils.SUCCESS)) {
-			return Response.status(Status.BAD_REQUEST).entity(status).build();
-		}
-		status = Utils.isUsernameValid(data.username);
-		if (!status.equals(Utils.SUCCESS)) {
-			return Response.status(Status.BAD_REQUEST).entity(status).build();
-		}
-		status = Utils.isPasswordValid(data.password);
+				
+		String status = isDataValid(data);
 		if (!status.equals(Utils.SUCCESS)) {
 			return Response.status(Status.BAD_REQUEST).entity(status).build();
 		}
 		
-		if (!arePasswordsEqual(data.password, data.confirmation)) {
-			return Response.status(Status.BAD_REQUEST).entity("Passwords don't match.").build();
-		}
 		
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
 		Entity person = Entity.newBuilder(userKey).set("password", DigestUtils.sha512Hex(data.password))
@@ -111,20 +87,70 @@ public class RegisterResource {
 		return Response.ok(g.toJson(at)).build();
 	}
 
-	private boolean areParamsNull(LoginDataV2 data) {
-		return Utils.isFieldNull(data.username) || Utils.isFieldNull(data.password)
+	private String areParamsNull(LoginDataV2 data) {
+		String status = Utils.SUCCESS;
+		if(Utils.isFieldNull(data.username) || Utils.isFieldNull(data.password)
 				|| Utils.isFieldNull(data.confirmation) || Utils.isFieldNull(data.email)
-				|| Utils.isFieldNull(data.name);
+				|| Utils.isFieldNull(data.name))
+			status = Utils.FIELDS_NULL;
+		return status;
 	}
 
-	private boolean areParamsEmpty(LoginDataV2 data) {
-		return Utils.isFieldEmpty(data.username) || Utils.isFieldEmpty(data.password)
+	private String areParamsEmpty(LoginDataV2 data) {
+		String status = Utils.SUCCESS;
+		if(Utils.isFieldEmpty(data.username) || Utils.isFieldEmpty(data.password)
 				|| Utils.isFieldEmpty(data.confirmation) || Utils.isFieldEmpty(data.email)
-				|| Utils.isFieldEmpty(data.name);
+				|| Utils.isFieldEmpty(data.name)) {
+			status = Utils.FIELDS_EMPTY;
+			
+		}
+		return status;
+
 	}
 
-	private boolean arePasswordsEqual(String password1, String confirmation) {
-		return Utils.areFieldsEqual(password1, confirmation);
+	private String arePasswordsEqual(String password1, String confirmation) {
+		String status = Utils.SUCCESS;
+		if(!Utils.areFieldsEqual(password1, confirmation)) {
+			status = Utils.PW_NO_MATCH;
+		}
+		return status;
+	}
+	
+	private String isDataValid(LoginDataV2 data) {
+		
+		String status = areParamsNull(data);
+		if (!status.equals(Utils.SUCCESS)) {
+			return status;
+		}
+		
+		status = areParamsEmpty(data);
+		if (!status.equals(Utils.SUCCESS)) {
+			return status;
+		}
+		
+		status = Utils.isEmailValid(data.email);
+		if (!status.equals(Utils.SUCCESS)) {
+			return status;
+		}
+		status = Utils.isNameValid(data.name);
+		if (!status.equals(Utils.SUCCESS)) {
+			return status;
+		}
+		status = Utils.isUsernameValid(data.username);
+		if (!status.equals(Utils.SUCCESS)) {
+			return status;
+		}
+		
+		status = Utils.isPasswordValid(data.password);
+		if (!status.equals(Utils.SUCCESS)) {
+			return status;
+		}
+		
+		status = arePasswordsEqual(data.password, data.confirmation);
+		if (!status.equals(Utils.SUCCESS)) {
+			return status;
+		}
+		return Utils.SUCCESS;
 	}
 
 }

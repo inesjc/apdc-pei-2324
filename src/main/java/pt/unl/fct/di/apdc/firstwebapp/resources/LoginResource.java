@@ -20,6 +20,7 @@ import com.google.gson.Gson;
 
 import pt.unl.fct.di.apdc.firstwebapp.util.AuthToken;
 import pt.unl.fct.di.apdc.firstwebapp.util.LoginData;
+import pt.unl.fct.di.apdc.firstwebapp.util.Utils;
 
 @Path("/login")
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
@@ -65,7 +66,7 @@ public class LoginResource {
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
 		Entity e = datastore.get(userKey);
 		if(e != null) {
-			if((e.getString("password")).equals(data.password)) {
+			if(Utils.areFieldsEqual(e.getString("password"), data.password)) {
 				AuthToken at = new AuthToken(data.username);
 				return Response.ok(g.toJson(at)).build();
 			}

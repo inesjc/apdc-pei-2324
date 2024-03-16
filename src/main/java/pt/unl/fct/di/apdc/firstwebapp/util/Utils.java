@@ -16,6 +16,9 @@ public class Utils {
 	public static final String LONG_USERNAME = "Username must be at most 20 characters long";
 	public static final String BAD_USERNAME = "Please use only lower case letters, digits and the special characters (-_.) for the username";
 	public static final String BAD_EMAIL = "Please provide a valid email.";
+	public static final String FIELDS_NULL = "At least one field is null.";
+	public static final String FIELDS_EMPTY = "At least one field is empty.";
+	public static final String PW_NO_MATCH = "Passwords don't match.";
 
 	public static boolean isFieldNull(String field) {
 		return field == null;
