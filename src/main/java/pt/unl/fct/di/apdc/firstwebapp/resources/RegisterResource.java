@@ -75,6 +75,7 @@ public class RegisterResource {
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
 		Entity person = Entity.newBuilder(userKey)
 						.set("password", DigestUtils.sha512Hex(data.password))
+						.set("time_of_registration", Timestamp.now())
 						.set("email", data.email)
 						.set("name", data.name)
 						.build();
