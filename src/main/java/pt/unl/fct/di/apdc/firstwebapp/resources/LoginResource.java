@@ -228,7 +228,8 @@ public class LoginResource {
 					return Response.status(Status.EXPECTATION_FAILED).entity(Utils.USER_DIDNT_LOG_IN).build();
 				}
 				lastLogins.removeIf(t -> t.get().toDate().before(yesterday));
-
+				Entity tempEntity = Entity.newBuilder(entity).set("lastlogins", lastLogins).build();
+                datastore.update(tempEntity);
 				if (!lastLogins.isEmpty()) {
 					return Response.ok(g.toJson(lastLogins.toArray())).build();
 				} else {
