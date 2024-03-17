@@ -45,13 +45,13 @@ public class RegisterResource {
 		LOG.fine("Attemp to register user: " + data.username);
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
 		Entity person = Entity.newBuilder(userKey).set("password", DigestUtils.sha512Hex(data.password))
-				.set("timeOfCreation", Timestamp.now()).build();
+				.set("time_of_registration", Timestamp.now()).build();
 		try {
 			datastore.add(person);
 		} catch (DatastoreException e) {
 			if ("ALREADY_EXISTS".equals(e.getReason())) {
 				// entity.getKey() already exists
-				return Response.status(Status.FORBIDDEN).entity("Username already in use.").build();
+				return Response.status(Status.FORBIDDEN).entity(Utils.USERNAME_IN_USE).build();
 			}
 		}
 		AuthToken at = new AuthToken(data.username);
@@ -69,23 +69,28 @@ public class RegisterResource {
 			return Response.status(Status.BAD_REQUEST).entity(status).build();
 		}
 		
-		
+		//TODO: perguntar ao prof como e com as transacoes no nosso caso
+		// porque nao faz sentido fazer um get e um add visto q add ja faz get e porque
+		// sao 2 pesquisas O(n), aqui poderemos nao precisar de fazer transacao
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
-		Entity person = Entity.newBuilder(userKey).set("password", DigestUtils.sha512Hex(data.password))
-				// .set("confirmation", data.confirmation)
-				.set("email", data.email).set("name", data.name).build();
+		Entity person = Entity.newBuilder(userKey)
+						.set("password", DigestUtils.sha512Hex(data.password))
+						.set("email", data.email)
+						.set("name", data.name)
+						.build();
 
 		try {
 			datastore.add(person);
 		} catch (DatastoreException e) {
 			if ("ALREADY_EXISTS".equals(e.getReason())) {
-				// entity.getKey() already exists
-				return Response.status(Status.FORBIDDEN).entity("Username already in use.").build();
+				return Response.status(Status.FORBIDDEN).entity(Utils.USERNAME_IN_USE).build();
 			}
 		}
 		AuthToken at = new AuthToken(data.username);
 		return Response.ok(g.toJson(at)).build();
 	}
+	
+	// PRIVATE METHODS --------------------------------------------------------------------------------
 
 	private String areParamsNull(LoginDataV2 data) {
 		String status = Utils.SUCCESS;
