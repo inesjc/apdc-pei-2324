@@ -22,6 +22,7 @@ import com.google.cloud.datastore.DatastoreException;
 import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
+import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.StringValue;
 import com.google.cloud.datastore.TimestampValue;
@@ -102,6 +103,9 @@ public class LoginResource {
 			return Response.status(Status.BAD_REQUEST).entity(status).build();
 		}
 
+		// TODO: Alterar para não haver multiplas escritas, usar query
+		// Todo: Usar entidade filha do user chamada lastLogin e ir adicionando lastLogins como filhos asism é só uma escrita
+		// TODO: Nao assumir que a google faz controlo de DDoS, ter um counter e negar  apartir de um certo numero de logins
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
 		Entity entity = datastore.get(userKey);
 		if (entity != null) {
@@ -129,6 +133,46 @@ public class LoginResource {
 		}
 		return Response.status(Status.NOT_FOUND).entity(Utils.USERNAME_NOT_EXISTS).build();
 	}
+	
+	@POST
+	@Path("/v1b")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response doLoginV1b(LoginData data) {
+		LOG.fine("Attempt to login user: " + data.username);
+		
+		String status = isDataValid(data);
+		if (!status.equals(Utils.SUCCESS)) {
+			return Response.status(Status.BAD_REQUEST).entity(status).build();
+		}
+		
+		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
+		Entity user = datastore.get(userKey);
+		
+		if(user != null) {
+			status = arePasswordsEqual(user.getString("password"), DigestUtils.sha512Hex(data.password));
+			if (status.equals(Utils.SUCCESS)) {
+				KeyFactory logKeyFactory = datastore.newKeyFactory()
+						   .addAncestor(PathElement.of("User", data.username))
+						   .setKind("UserLog");
+				Key logKey = datastore.allocateId(logKeyFactory.newKey());
+				Entity userLog = Entity.newBuilder(logKey)
+								.set("user_login_time", Timestamp.now())
+								.build();
+				datastore.put(userLog);
+				LOG.info("User '" + data.username + "' logged in sucessfully");
+				AuthToken token = new AuthToken(data.username);
+				return Response.ok(g.toJson(token)).build();
+			}
+			else {
+				LOG.warning("Wrong password for: " + data.username);
+				return Response.status(Status.FORBIDDEN).build();
+			}
+		}
+		else {
+			LOG.warning("Failed login attempt for username: " + data.username);
+			return Response.status(Status.FORBIDDEN).build();
+		}
+	}
 
 	@POST
 	@Path("/v2")
@@ -137,9 +181,10 @@ public class LoginResource {
 		LOG.fine("Attemp to login user: " + data.username);
 		Timestamp nowTime = Timestamp.now();
 		TimestampValue now = TimestampValue.of(nowTime);
+		
 		String status = isDataValid(data);
 		if (!status.equals(Utils.SUCCESS)) {
-			return Response.status(Status.BAD_REQUEST).entity(status).build();
+			return Response.status(Status.BAD_REQUEST).build();
 		}
 
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
@@ -174,22 +219,22 @@ public class LoginResource {
 						.build();
 				datastore.put(ustats, log);
 
-				List<TimestampValue> lastLogins = new ArrayList<TimestampValue>();
+				//List<TimestampValue> lastLogins = new ArrayList<TimestampValue>();
 				Date yesterday = Date.from(Instant.now().minusSeconds(24 * 3600));
 
 				try {
-					List<TimestampValue> tempList = entity.getList("lastlogins");
-					lastLogins.addAll(tempList);
+					//List<TimestampValue> tempList = entity.getList("lastlogins");
+					//lastLogins.addAll(tempList);
 				} catch (DatastoreException e) {
 					LOG.fine("Welcome to your first log in");
 				}
-				lastLogins.add(now);
-				lastLogins.removeIf(t -> t.get().toDate().before(yesterday));
+				//lastLogins.add(now);
+				//lastLogins.removeIf(t -> t.get().toDate().before(yesterday));
 				AuthToken at = new AuthToken(data.username);
 
-				Entity tempEntity = Entity.newBuilder(entity).set("lastlogins", lastLogins).set("lastLogin", now)
-						.build();
-				datastore.update(tempEntity);
+				//Entity tempEntity = Entity.newBuilder(entity).set("lastlogins", lastLogins).set("lastLogin", now)
+						//.build();
+				//datastore.update(tempEntity);
 				return Response.ok(g.toJson(at)).build();
 			}
 			Entity ustats = Entity.newBuilder(countersKeys).set("user_stats_logins", stats.getLong("user_stats_logins"))
@@ -198,9 +243,9 @@ public class LoginResource {
 					.set("user_first_login", stats.getTimestamp("user_first_login")).set("user_last_attempt", nowTime)
 					.build();
 			datastore.put(ustats);
-			return Response.status(Status.BAD_REQUEST).entity(status).build();
+			return Response.status(Status.BAD_REQUEST).build();
 		}
-		return Response.status(Status.NOT_FOUND).entity(Utils.USERNAME_NOT_EXISTS).build();
+		return Response.status(Status.BAD_REQUEST).build();
 	}
 
 	@POST
