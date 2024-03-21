@@ -1,0 +1,6 @@
+indexes:
+
+- kind: UserLog
+  ancestor: yes
+  properties:
+  - name: user_login_time
