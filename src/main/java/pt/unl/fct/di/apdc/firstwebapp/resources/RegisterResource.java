@@ -1,5 +1,7 @@
 package pt.unl.fct.di.apdc.firstwebapp.resources;
 
+import java.util.Set;
+import java.util.PrimitiveIterator.OfDouble;
 import java.util.logging.Logger;
 
 import javax.ws.rs.Consumes;
@@ -18,6 +20,7 @@ import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.Entity;
 import com.google.gson.Gson;
+import com.fasterxml.jackson.databind.introspect.DefaultAccessorNamingStrategy.FirstCharBasedValidator;
 import com.google.cloud.Timestamp;
 
 import pt.unl.fct.di.apdc.firstwebapp.util.*;
@@ -58,6 +61,9 @@ public class RegisterResource {
 		return Response.ok(g.toJson(at)).build();
 	}
 
+	/**
+	 * First set of slides: Exercise 2
+	 */
 	@POST
 	@Path("/v2")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -69,9 +75,6 @@ public class RegisterResource {
 			return Response.status(Status.BAD_REQUEST).entity(status).build();
 		}
 		
-		//TODO: perguntar ao prof como e com as transacoes no nosso caso
-		// porque nao faz sentido fazer um get e um add visto q add ja faz get e porque
-		// sao 2 pesquisas O(n), aqui poderemos nao precisar de fazer transacao
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
 		Entity person = Entity.newBuilder(userKey)
 						.set("password", DigestUtils.sha512Hex(data.password))

@@ -1,6 +1,7 @@
 package pt.unl.fct.di.apdc.firstwebapp.resources;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -16,6 +17,10 @@ import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
+import com.google.cloud.datastore.Cursor;
+import com.google.appengine.api.datastore.FetchOptions;
+import com.google.appengine.api.datastore.PreparedQuery;
+import com.google.appengine.api.datastore.QueryResultList;
 import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreOptions;
@@ -64,6 +69,69 @@ public class LoginResource {
 		}
 		return Response.status(Status.FORBIDDEN).entity("Incorrect username or password.").build();
 	}
+	
+	/*
+	 * First set of slides: Exercise 3
+	@POST
+    @Path("/v1")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response doLoginV1(LoginData data) {
+        LOG.fine("Attemp to login user: " + data.username);
+
+        String status = isDataValid(data);
+        if (!status.equals(Utils.SUCCESS)) {
+        	LOG.warning(status);
+            return Response.status(Status.BAD_REQUEST).build();
+        }
+
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
+        Entity user = datastore.get(userKey);
+        if (user != null) {
+            status = arePasswordsEqual(user.getString("password"), DigestUtils.sha512Hex(data.password));
+            if (status.equals(Utils.SUCCESS)) {
+                AuthToken at = new AuthToken(data.username);
+                return Response.ok(g.toJson(at)).build();
+            }
+            LOG.warning(status);
+            return Response.status(Status.BAD_REQUEST).build();
+        }
+        LOG.warning(status);
+        return Response.status(Status.NOT_FOUND).build();
+    }
+    */
+	
+	/*
+	 * First set of slides: Tarefa 5 
+	 * Login with timestamp of lastLogin
+	@POST
+    @Path("/v1")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response doLoginV1(LoginData data) {
+        LOG.fine("Attemp to login user: " + data.username);
+
+        String status = isDataValid(data);
+        if (!status.equals(Utils.SUCCESS)) {
+        	LOG.warning(status);
+            return Response.status(Status.BAD_REQUEST).build();
+        }
+
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
+        Entity user = datastore.get(userKey);
+        if (user != null) {
+            status = arePasswordsEqual(user.getString("password"), DigestUtils.sha512Hex(data.password));
+            if (status.equals(Utils.SUCCESS)) {
+                AuthToken at = new AuthToken(data.username);
+                Entity lastLogin = Entity.newBuilder(user).set("last_login", Timestamp.now()).build();
+                datastore.update(lastLogin);
+                return Response.ok(g.toJson(at)).build();
+            }
+            LOG.warning(status);
+            return Response.status(Status.BAD_REQUEST).build();
+        }
+        LOG.warning(status);
+        return Response.status(Status.NOT_FOUND).build();
+    }
+    */
 
 	@POST
 	@Path("/v1")
@@ -73,7 +141,8 @@ public class LoginResource {
 
 		String status = isDataValid(data);
 		if (!status.equals(Utils.SUCCESS)) {
-			return Response.status(Status.BAD_REQUEST).entity(status).build();
+			LOG.warning(status);
+			return Response.status(Status.BAD_REQUEST).build();
 		}
 
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
@@ -93,10 +162,12 @@ public class LoginResource {
 				return Response.ok(g.toJson(at)).build();
 			} else {
 				LOG.warning("Wrong password for: " + data.username);
+				LOG.warning(status);
 				return Response.status(Status.FORBIDDEN).build();
 			}
 		} else {
 			LOG.warning("Failed login attempt for username: " + data.username);
+			LOG.warning(status);
 			return Response.status(Status.FORBIDDEN).build();
 		}
 	}
@@ -109,7 +180,8 @@ public class LoginResource {
 		Timestamp now = Timestamp.now();
 		String status = isDataValid(data);
 		if (!status.equals(Utils.SUCCESS)) {
-			return Response.status(Status.BAD_REQUEST).entity(status).build();
+			LOG.warning(status);
+			return Response.status(Status.BAD_REQUEST).build();
 		}
 
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
@@ -154,9 +226,11 @@ public class LoginResource {
 					.set("user_first_login", stats.getTimestamp("user_first_login")).set("user_last_attempt", now)
 					.build();
 			datastore.put(ustats);
-			return Response.status(Status.BAD_REQUEST).entity(status).build();
+			LOG.warning(status);
+			return Response.status(Status.BAD_REQUEST).build();
 		}
-		return Response.status(Status.NOT_FOUND).entity(Utils.USERNAME_NOT_EXISTS).build();
+		LOG.warning(status);
+		return Response.status(Status.NOT_FOUND).build();
 	}
 
 	@POST
@@ -167,7 +241,8 @@ public class LoginResource {
 
 		String status = isDataValid(data);
 		if (!status.equals(Utils.SUCCESS)) {
-			return Response.status(Status.BAD_REQUEST).entity(status).build();
+			LOG.warning(status);
+			return Response.status(Status.BAD_REQUEST).build();
 		}
 		Timestamp yesterday = Timestamp.of(Date.from(Instant.now().minusSeconds(24 * 60 * 60)));
 		Query<Entity> query = Query.newEntityQueryBuilder().setKind("UserLog")
@@ -187,14 +262,68 @@ public class LoginResource {
 				logs.forEachRemaining(userLog -> {
 					loginDates.add(userLog.getTimestamp("user_login_time").toDate());
 				});
+				LOG.warning(status);
 				return Response.ok(g.toJson(loginDates)).build();
 			}
-
-			return Response.status(Status.BAD_REQUEST).entity(status).build();
+			LOG.warning(status);
+			return Response.status(Status.BAD_REQUEST).build();
 		}
-		return Response.status(Status.NOT_FOUND).entity(Utils.USERNAME_NOT_EXISTS).build();
-
+		LOG.warning(status);
+		return Response.status(Status.NOT_FOUND).build();
 	}
+	
+	@POST
+    @Path("/user/pagination")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response listLast24HourLogins3x3(LoginData data, @Context HttpServletRequest req) {
+        LOG.fine("Attemp to recall logins from user: " + data.username);
+
+        String status = isDataValid(data);
+        if (!status.equals(Utils.SUCCESS)) {
+            return Response.status(Status.BAD_REQUEST).entity(status).build();
+        }
+
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
+        Entity entity = datastore.get(userKey);
+        if (entity != null) {
+            status = arePasswordsEqual(entity.getString("password"), DigestUtils.sha512Hex(data.password));
+            if (status.equals(Utils.SUCCESS)) {
+                Timestamp yesterday = Timestamp.of(Date.from(Instant.now().minusSeconds(24 * 60 * 60)));
+                Query<Entity> query;
+                String startCursor = req.getParameter("cursor");
+                if (startCursor != null) {
+                    query = Query.newEntityQueryBuilder().setKind("UserLog").setLimit(3)
+                            .setStartCursor(Cursor.fromUrlSafe(startCursor))
+                            .setFilter(CompositeFilter.and(
+                                    PropertyFilter.hasAncestor(
+                                            datastore.newKeyFactory().setKind("User").newKey(data.username)),
+                                    PropertyFilter.ge("user_login_time", yesterday)))
+                            .build();
+                } else {
+
+                    query = Query.newEntityQueryBuilder().setKind("UserLog").setLimit(3)
+                            .setFilter(CompositeFilter.and(
+                                    PropertyFilter.hasAncestor(
+                                            datastore.newKeyFactory().setKind("User").newKey(data.username)),
+                                    PropertyFilter.ge("user_login_time", yesterday)))
+                            .build();
+                }
+
+                QueryResults<Entity> logs = datastore.run(query);
+                List<Date> loginDates = new ArrayList<Date>();
+                logs.forEachRemaining(userLog -> {
+                    loginDates.add(userLog.getTimestamp("user_login_time").toDate());
+                });
+                return Response.ok(g.toJson(loginDates) + logs.getCursorAfter().toUrlSafe()).build();
+            } else {
+                LOG.warning("Wrong password for: " + data.username);
+                return Response.status(Status.FORBIDDEN).build();
+            }
+        } else {
+            LOG.warning("Failed login attempt for username: " + data.username);
+            return Response.status(Status.FORBIDDEN).build();
+        }
+    }
 
 	@GET
 	@Path("/{username}")
