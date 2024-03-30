@@ -1,0 +1,298 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html>
+
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<title>Hello Google Cloud Storage</title>
+</head>
+
+<body onload="setDownloadDefaults()">
+	<h1>Hello Google Cloud Storage!</h1>
+
+	<table>
+		<tr>
+			<td style="font-weight: bold;">Upload a file to Google Cloud
+				Storage:</td>
+		</tr>
+		<tr>
+			<!--[START user_input]-->
+			<td>
+				<form action="/pages/resumableUpload.html" enctype="text/plain" method="get" name="putFile"
+					id="putFile">
+					<div>
+						Bucket: <input type="text" name="bucket" /> File: <input type="file" name="files" /> <input
+							type="hidden" name="fileName" />
+						<input type="submit" onclick='uploadFile(this)' value="Upload Content" />
+					</div>
+					<div>
+						<input type="submit" onclick='pauseUpload(this)' value="Pause Upload" />
+					</div>
+					<div>
+						<input type="submit" onclick='resumelUpload(this)' value="Resume Upload " />
+					</div>
+					<div>
+						<input type="submit" onclick='cancelUpload(this)' value="Cancel Upload " />
+					</div>
+				</form>
+			</td>
+		</tr>
+		<tr>
+			<td style="font-weight: bold;">Download a file from Google Cloud
+				Storage:</td>
+		</tr>
+		<tr>
+			<td>
+				<form name="getFile">
+					<div>
+						Bucket: <input type="text" name="bucket" id="bucket" /> File
+						Name: <input type="text" name="fileName" id="fileName" />
+					</div>
+				</form>
+				<form action="/pages/resumableUpload.html" method="get" name="submitGet">
+					<div>
+						<input type="submit" onclick='changeGetPath(this)' value="Download Content" />
+					</div>
+				</form>
+			</td>
+		</tr>
+		<!--[END user_input]-->
+	</table>
+	<script>
+
+		var session_uri = null;
+		var total_object_size = 0;
+		var file = null;
+		var chunk_size = 256 * 1024;
+		var accessToken = "ya29.a0Ad52N38FaSbV-iQCxaXyzpIQraz71YmFIXgWuZsLqfCgxz6TqVSus9vIVfzbyCwV8j4daxfZXk4aF0qvOlY_L7iELrNSydJno_TKmWIvEOX5cBHzItbKcm9Z4CJrPy_DMqOPXWIpIYtu1s3KpA_jvt86K-0RJ5Psnl_uaCgYKAS8SARESFQHGX2MiGQqDKHqTEP3Md_WFq5UnNg0171";
+		var goToHell = "/gcs/";
+
+
+		function setDownloadDefaults() {
+			var url = location.search;
+			var bucketArg = url.match(/bucket=[^&]*&/);
+			if (bucketArg !== null) {
+				document.getElementById("bucket").value = bucketArg.shift().slice(7, -1);
+			}
+			var fileArg = url.match(/fileName=[^&]*/);
+			if (fileArg !== null) {
+				document.getElementById("fileName").value = fileArg.shift().slice(9);
+			}
+		}
+
+		function changeGetPath() {
+			var bucket = document.forms["getFile"]["bucket"].value;
+			var filename = document.forms["getFile"]["fileName"].value;
+			if (bucket == null || bucket == "" || filename == null || filename == "") {
+				alert("Both Bucket and FileName are required");
+				return false;
+			} else {
+				document.submitGet.action = "/gcs/" + bucket + "/" + filename;
+			}
+		}
+
+		async function uploadFileChunk(session_uri, file, chunk_first_byte, chunk_last_byte) {
+			const chunk = file.slice(chunk_first_byte, chunk_last_byte);
+			const formData = new FormData();
+			formData.append('file', chunk);
+
+			const headers = {
+				'Content-Range': `bytes ${chunk_first_byte}-${chunk_last_byte}/${file.size}`,
+				'Content-Length': chunk_size,
+				'Access-Control-Allow-Origin': `*`
+
+			};
+
+			const response = await fetch(session_uri, {
+				method: 'PUT',
+				body: formData,
+				headers: headers
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to upload chunk ${chunk_first_byte}-${chunk_last_byte}: ${response.statusText}`);
+			}
+
+			return await response.json();
+		}
+
+		async function resumeUpload(session_uri, file, uploadedChunks) {
+			event.preventDefault();
+			for (const chunkRange of uploadedChunks) {
+				const [chunk_first_byte, chunk_last_byte] = chunkRange.split('-').map(Number);
+				try {
+					await uploadFileChunk(session_uri, file, chunk_first_byte, chunk_last_byte);
+					console.log(`Resumed upload of chunk ${chunk_first_byte}-${chunk_last_byte}`);
+				} catch (error) {
+					console.error(`Failed to resume upload of chunk ${chunk_first_byte}-${chunk_last_byte}: ${error}`);
+					return false;
+				}
+			}
+			return true;
+		}
+
+
+		async function uploadFile() {
+			event.preventDefault();
+
+			var bucket = document.forms["putFile"]["bucket"].value;
+			file = document.forms["putFile"]["files"].files[0];
+			var filename = file.name;
+
+			if (bucket == null || bucket == "" || filename == null || filename == "") {
+				alert("Both Bucket and FileName are required");
+				return false;
+			} else {
+				var object_name = goToHell + bucket + "/" + filename;
+				var object_content_type = file.type;
+				total_object_size = file.size;
+				var chunk_location = file.getPath;
+				var chunk_first_byte = 0;
+				var chunk_last_byte = Math.min(chunk_size, total_object_size);
+				var uploaded_size = 0;
+
+
+				//Initiate resumable upload sessions
+				var xhr = new XMLHttpRequest();
+				xhr.open("POST", object_name, true);
+				xhr.setRequestHeader("Authorization", "Bearer " + accessToken);
+				//	xhr.setRequestHeader("Content-Length", "0");
+				xhr.setRequestHeader("Content-Type", object_content_type);
+				xhr.setRequestHeader("x-goog-resumable", "start");
+				xhr.setRequestHeader("Access-Control-Allow-Origin", "*");
+
+				await xhr.send();
+
+				xhr.onreadystatechange = function () {
+					if (xhr.readyState == XMLHttpRequest.DONE) {
+						if (xhr.status == 201) {
+							session_uri = xhr.getResponseHeader("Location");
+							// Proceed to upload data using resumableSessionURI
+							while (chunk_first_byte < total_object_size) {
+								try {
+									//await
+									uploadFileChunk(session_uri, file, chunk_first_byte, chunk_last_byte);
+									uploadedSize += chunk_last_byte - chunk_first_byte;
+									console.log(`Uploaded ${uploaded_size} bytes out of ${total_object_size} bytes`);
+
+								}
+								catch (error) {
+									console.error(`Failed to upload chunk ${chunk_first_byte}-${chunk_last_byte}: ${error}`);
+									return false;
+								}
+								chunk_first_byte = chunk_last_byte;
+								chunk_last_byte = Math.min(chunk_first_byte + chunk_size, total_object_size);
+							}
+							console.log('Upload completed successfully');
+							return true;
+
+						} else {
+							console.error("Error initiating resumable upload:", xhr.responseText);
+							return false;
+						}
+					}
+				};
+
+
+
+
+
+				//document.forms["putFile"]["fileName"].value = filename;
+				//var request = new XMLHttpRequest();
+				//request.open("POST", object_name, false);
+				//request.setRequestHeader("Content-Type", file.type);
+				//request.send(file);
+			}
+
+		}
+
+		async function checkUploadStatus() {
+			event.preventDefault();
+			//Check status of the upload
+			var xhr = new XMLHttpRequest();
+			xhr.open("PUT", session_uri, true);
+			xhr.setRequestHeader("Authorization", "Bearer " + accessToken);
+			xhr.setRequestHeader("Content-Length", "0");
+			xhr.setRequestHeader("Content-Range", "bytes */" + total_object_size);
+			xhr.setRequestHeader("Access-Control-Allow-Origin", "*");
+
+			var rangeHeader = null;
+			xhr.onreadystatechange = function () {
+				if (xhr.readyState == XMLHttpRequest.DONE) {
+					if (xhr.status == 200 || xhr.status == 201) {
+						console.log("Upload completed successfully.");
+						// You can handle the successful upload status here
+					} else if (xhr.status == 308) {
+						rangeHeader = xhr.getResponseHeader("Range");
+					} else {
+						console.error("Error checking upload status:", xhr.responseText);
+						// You can handle error cases here
+
+					}
+				}
+			};
+
+			await xhr.send();
+		}
+
+
+		async function resumeUpload() {
+			event.preventDefault();
+			var range_header = checkUploadStatus();
+
+			if (range_header) {
+				// Extract upper value from range header
+				var upper_value = parseInt(range_header.split("-")[1]);
+				var chunk_first_byte = upper_value + 1;
+				var chunk_last_byte = total_object_size - 1;
+				var uploadSizeRemaining = total_object_size - nextByte;
+
+				while (chunk_first_byte < total_object_size) {
+					try {
+						await uploadFileChunk(session_uri, file, chunk_first_byte, chunk_last_byte);
+						uploadedSize += chunk_last_byte - chunk_first_byte;
+						console.log(`Uploaded ${uploaded_size} bytes out of ${total_object_size} bytes`);
+
+					}
+					catch (error) {
+						console.error(`Failed to upload chunk ${chunk_first_byte}-${chunk_last_byte}: ${error}`);
+						return false;
+					}
+					chunk_first_byte = chunk_last_byte;
+					chunk_last_byte = Math.min(chunk_first_byte + chunk_size, total_object_size);
+				}
+				console.log('Upload completed successfully');
+				return true;
+			} else {
+				console.log("Upload is incomplete, but no bytes are persisted yet.");
+				// Handle the case where no bytes are persisted yet
+				uploadFile()
+			}
+		}
+
+		async function cancelUpload() {
+			event.preventDefault();
+			var xhr = new XMLHttpRequest();
+			xhr.open("DELETE", sessionURI, true);
+			xhr.setRequestHeader("Content-Length", "0");
+			xhr.setRequestHeader("Access-Control-Allow-Origin", "*");
+			xhr.onreadystatechange = function () {
+				if (xhr.readyState == XMLHttpRequest.DONE) {
+					if (xhr.status == 204) {
+						console.log("Upload canceled successfully.");
+						// Handle success, if needed
+					} else {
+						console.error("Error canceling upload:", xhr.responseText);
+						// Handle error, if needed
+					}
+				}
+			};
+
+			await xhr.send();
+		}
+
+
+	</script>
+</body>
+
+</html>

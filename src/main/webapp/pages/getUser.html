@@ -1,0 +1,76 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<title>Zee fetching of zee user</title>
+</head>
+
+<body onload="setGetUserDefaults()">
+	<h1>Hello, is it me you are looking for?</h1>
+	<table>
+		<tr>
+			<td style="font-weight: bold;">Get the information about your
+				user from our database:</td>
+			<br></br>
+		</tr>
+		<tr>
+			<!--[START user_input]-->
+			<td>
+				<form>
+					<div>
+						Username: <input type="text" name="username" id="username" /><br></br>
+						Password: <input type="password" name="password" id="password" /><br></br>
+						<input type="submit" onclick='getUserHere(this)' value="Get User" />
+					</div>
+				</form>
+			</td>
+		</tr>
+		<!--[END user_input]-->
+	</table>
+	<script>
+		function setGetUserDefaults() {
+			var url = location.search;
+		}
+
+		function getUserHere() {
+			event.preventDefault();
+			var projectName = "quixotic-sunset-416023";
+			var reqUrl = "https://" + projectName
+				+ ".oa.r.appspot.com/rest/login/get/";
+
+			var username = document.getElementById('username').value;
+			var password = document.getElementById('password').value;
+
+			if (username == null || username == "" || password == null
+				|| password == "") {
+				alert("All fields are required");
+				return false;
+			} else
+				var isThisYou = {
+					"username": username,
+					"password": password
+				};
+
+			var request = new XMLHttpRequest();
+			request.open("POST", reqUrl, true);
+			request.setRequestHeader("Content-Type", "application/json");
+
+			request.send(JSON.stringify(isThisYou));
+
+			request.onreadystatechange = function () {
+				if (request.readyState == 4) {
+					if (request.status == 200) {
+						alert(request.response);
+					} else {
+						alert("Error recovering user. Please try again later.");
+					}
+				}
+			};
+
+
+		}
+	</script>
+</body>
+
+</html>

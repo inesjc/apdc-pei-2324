@@ -6,6 +6,7 @@ import java.util.logging.Logger;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
@@ -21,6 +22,8 @@ import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.Entity;
 import com.google.gson.Gson;
 import com.fasterxml.jackson.databind.introspect.DefaultAccessorNamingStrategy.FirstCharBasedValidator;
+import com.google.appengine.api.taskqueue.TaskQueuePb.TaskQueueUpdateStorageLimitRequest;
+import com.google.appengine.api.users.User;
 import com.google.cloud.Timestamp;
 
 import pt.unl.fct.di.apdc.firstwebapp.util.*;
@@ -78,7 +81,6 @@ public class RegisterResource {
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
 		Entity person = Entity.newBuilder(userKey)
 						.set("password", DigestUtils.sha512Hex(data.password))
-						.set("time_of_registration", Timestamp.now())
 						.set("email", data.email)
 						.set("name", data.name)
 						.build();
@@ -89,6 +91,39 @@ public class RegisterResource {
 			if ("ALREADY_EXISTS".equals(e.getReason())) {
 				return Response.status(Status.FORBIDDEN).entity(Utils.USERNAME_IN_USE).build();
 			}
+		}
+		AuthToken at = new AuthToken(data.username);
+		return Response.ok(g.toJson(at)).build();
+	}
+	
+	/**
+	 * @pre user is the user
+	 * Updates a user
+	 */
+	@PUT
+	@Path("/update")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response doUpdate(LoginDataV2 data) {
+		LOG.fine("Attemp to register user: " + data.username);
+				
+		String status = isDataValid(data);
+		if (!status.equals(Utils.SUCCESS)) {
+			return Response.status(Status.BAD_REQUEST).entity(status).build();
+		}
+		
+		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
+		Entity person = Entity.newBuilder(userKey)
+						.set("password", DigestUtils.sha512Hex(data.password))
+						.set("time_of_registration", Timestamp.now())
+						.set("email", data.email)
+						.set("name", data.name)
+						.build();
+		
+		try {
+			datastore.update(person);
+		} catch (DatastoreException e) {
+			return Response.status(Status.FORBIDDEN).build();
+			
 		}
 		AuthToken at = new AuthToken(data.username);
 		return Response.ok(g.toJson(at)).build();

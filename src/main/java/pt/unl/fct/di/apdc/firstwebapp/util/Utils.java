@@ -114,8 +114,10 @@ public class Utils {
 	}
 
 	public static String isEmailValid(String mail) {
-        Pattern pattern = Pattern.compile("^(?![.])[a-zA-Z0-9_.]*[a-zA-Z0-9][a-zA-Z0-9_.]*@[a-zA-Z0-9]+[.][a-zA-Z0-9]+",
+		Pattern pattern = Pattern.compile("^(?![.])[a-zA-Z0-9_.]*[a-zA-Z0-9][a-zA-Z0-9_.]*@[[a-zA-Z0-9]+.]+[a-zA-Z0-9]+",
                 Pattern.CASE_INSENSITIVE);
+        //Pattern pattern = Pattern.compile("^(?![.])[a-zA-Z0-9_.]*[a-zA-Z0-9][a-zA-Z0-9_.]*@[a-zA-Z0-9]+[.][a-zA-Z0-9]+",
+                //Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(mail);
         String[] domains = mail.split("@");
         String[] labels = domains[1].split(".");

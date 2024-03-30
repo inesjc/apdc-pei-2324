@@ -336,6 +336,59 @@ public class LoginResource {
 			return Response.ok().entity(g.toJson(true)).build();
 		}
 	}
+	
+	@POST
+    @Path("/get")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response getUserSelf(LoginData data) {
+        LOG.fine("Attemp to get information from user: " + data.username);
+
+        String status = isDataValid(data);
+        if (!status.equals(Utils.SUCCESS)) {
+            return Response.status(Status.BAD_REQUEST).entity(status).build();
+        }
+
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
+        Entity entity = datastore.get(userKey);
+        if (entity != null) {
+            status = arePasswordsEqual(entity.getString("password"), DigestUtils.sha512Hex(data.password));
+            if (status.equals(Utils.SUCCESS)) {
+                String[] intel = { "username : " + data.username, "email : " + entity.getString("email"),
+                        "name : " + entity.getString("name") };
+                return Response.ok().entity(g.toJson(intel)).build();
+            } else {
+
+                LOG.warning("Wrong password for: " + data.username);
+                return Response.status(Status.FORBIDDEN).build();
+
+            }
+        } else {
+
+            LOG.warning("Failed fetch attempt for username: " + data.username);
+            return Response.status(Status.FORBIDDEN).build();
+
+        }
+    }
+
+    @GET
+    @Path("/get/{user}")
+    public Response getUser(@PathParam("user") String user) {
+        LOG.fine("Attemp to get information without password from user: " + user);
+
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(user);
+        Entity entity = datastore.get(userKey);
+        if (entity != null) {
+            String[] intel = { "username : " + user, "email : " + entity.getString("email"),
+                    "name : " + entity.getString("name") };
+            return Response.ok().entity(g.toJson(intel)).build();
+
+        } else {
+
+            LOG.warning("Failed fetch attempt for username: " + user);
+            return Response.status(Status.FORBIDDEN).build();
+
+        }
+    }
 
 	@DELETE
 	@Path("/delete")
@@ -350,6 +403,26 @@ public class LoginResource {
 			datastore.delete(userKey);
 
 			return Response.ok(g.toJson(entity)).build();
+		}
+		return Response.status(Status.FORBIDDEN).build();
+	}
+	
+	@DELETE
+	@Path("/delete/v2")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response deLeteV2(LoginData data) {
+		LOG.fine("Attemp to delete user: " + data.username);
+	
+		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
+		Entity entity = datastore.get(userKey);
+		
+		if(entity != null) {
+			if(entity.getString("password").equals(DigestUtils.sha512Hex(data.password))) {
+				datastore.delete(userKey);
+				return Response.ok(g.toJson(entity)).build();
+				
+			}
+			return Response.status(Status.BAD_REQUEST).build();
 		}
 		return Response.status(Status.FORBIDDEN).build();
 	}

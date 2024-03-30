@@ -1,0 +1,75 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>So you want to delete your information we cannot no longer sell your data to devil, sad to see you go :()</title>
+</head>
+
+<body onload="setDeleteUserDefaults()">
+	<h1>Yes, delete your user</h1>
+	<table>
+		<tr>
+			<td style="font-weight: bold;">Delete your user from our
+				database:</td>
+
+		</tr>
+		<tr>
+			<!--[START user_input]-->
+			<td>
+				<form action="/pages/deleteUser.html" enctype="text/plain"
+					method="post" name="updateUser" id="updateUser">
+					<div>
+						Username: <input type="text" name="username" id="username" /><br></br>
+						Password: <input type="password" name="password" id="password" /><br></br>
+						<input type="submit"
+							onclick='deleteUserHere(this)' value="Delete User" />
+					</div>
+				</form>
+			</td>
+		</tr>
+		<!--[END user_input]-->
+	</table>
+	<script>
+		function setDeleteUserDefaults() {
+			var url = location.search;
+		}
+
+		function deleteUserHere() {
+			event.preventDefault();
+			var projectName = "quixotic-sunset-416023";
+			var reqUrl = "https://" + projectName
+					+ ".oa.r.appspot.com/rest/login/delete/v2";
+
+			var username = document.getElementById('username').value;
+			var password = document.getElementById('password').value;
+			
+			if (username == null || username == "" || password == null
+					|| password == "") {
+				alert("All fields are required");
+				return false;
+			} else {
+				var isThisWhatYouReallyWant = {
+					"username" : username,
+					"password" : password,
+				};
+
+				var request = new XMLHttpRequest();
+				request.open("DELETE", reqUrl, true);
+				request.setRequestHeader("Content-Type", "application/json");
+				request.send(JSON.stringify(isThisWhatYouReallyWant));
+				request.onreadystatechange = function() {
+					if (request.readyState == 4) {
+						if (request.status == 200) {
+							alert(request.response);
+						} else {
+							alert("Error deleting user. Please try again later.");
+						}
+					}
+				};
+			}
+		}
+	</script>
+</body>
+
+</html>
